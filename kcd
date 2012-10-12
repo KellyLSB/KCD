@@ -13,7 +13,7 @@ if ARGV.first == '--install'
 	end
 
 	bash_function = <<-FUNCTION
-# Create a method to change dir and run stuff
+### KCD ###
 function cd () {
 	builtin cd "$@" && kcd;
 
@@ -22,6 +22,7 @@ function cd () {
 			source "`pwd`/.pathSource" && rm "`pwd`/.pathSource";
 	fi
 }
+### END KCD ###
 	FUNCTION
 
 	if File.exists?("#{homeDir}/.zshrc")
