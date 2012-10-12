@@ -1,0 +1,98 @@
+#!/usr/local/bin/ruby
+require 'yaml'
+
+if ARGV.first == '--install'
+	homeDir = File.expand_path('~')
+
+	if File.exists?("#{homeDir}/.pathInstalled")
+		puts "KCD is already installed"
+		exit
+	end
+
+	bash_function = <<-FUNCTION
+# Create a method to change dir and run stuff
+function cd () {
+	builtin cd "$@" && kcd;
+
+	if [ -f "`pwd`/.pathSource" ]
+		then
+			source "`pwd`/.pathSource" && rm "`pwd`/.pathSource";
+	fi
+}
+	FUNCTION
+
+	if File.exists?("#{homeDir}/.zshrc")
+		file = "#{homeDir}/.zshrc"
+	elsif File.exists?("#{homeDir}/.bash_profile")
+		file = "#{homeDir}/.bash_profile"
+	elsif File.exists?("#{homeDir}/.bashrc")
+		file = "#{homeDir}/.bashrc"
+	else
+		file = nil
+	end
+
+	File.open(file, 'a') do |f|
+  		f.puts "\n" + bash_function
+	end unless file.nil?
+
+	path = ENV['PATH'].split(':')
+	unless path.include? File.dirname(__FILE__)
+		system('cp ' + __FILE__ + ' /usr/local/bin/')
+	end
+
+	puts "Now it is installed"
+	system("touch #{homeDir}/.pathInstalled")
+	system("touch #{homeDir}/.pathCache")
+	exit
+end
+
+# Get new directory
+current_dir = `pwd`.strip.split('/')
+
+i = 1; while i < current_dir.length
+	pathDir = current_dir.join('/')
+	break if File.exists?("#{pathDir}/.path")
+	pathDir = nil
+	i += 1
+end
+
+# Home Dir
+homeDir = File.expand_path('~')
+
+# Load Path Cache
+cache = YAML::load(File.new("#{homeDir}/.pathCache", "r").read)
+cache = Hash.new if cache == false || cache.nil? || cache.empty?
+
+# If we have a pathfile
+unless pathDir.nil?
+	backUp = pathDir.split('/')[0..-2].join('/')
+	cache[backUp] = ENV['PATH']
+
+	# Write path file to source
+	File.open("#{current_dir.join('/')}/.pathSource", "w+") do |file|
+		file.write 'export PATH="' + File.new("#{pathDir}/.path", "r").read.strip + ':' + ENV['PATH'] + '"'
+	end
+else
+
+	contain = nil
+	cache.each do |key, val|
+		contain = key
+		break if key.include? current_dir.join('/')
+		contain = nil
+	end
+
+	unless contain.nil?
+		path = cache[contain]
+
+		# Write path file to source
+		File.open("#{current_dir.join('/')}/.pathSource", "w+") do |file|
+			file.write 'export PATH="' + path + '"'
+		end
+
+		cache.delete(contain)
+	end
+end
+
+File.open("#{homeDir}/.pathCache", "w") do |file|
+	file.write YAML::dump(cache)
+end
