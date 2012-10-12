@@ -74,7 +74,7 @@ if ARGV.first == '--after-update'
 end
 
 # Remind about an update
-if Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/version.txt')).strip !== _version
+if Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/version.txt')).strip != _version
 	puts "There is an update for kcd. Run 'kcd --update'"
 end
 
