@@ -1,5 +1,8 @@
 #!/usr/local/bin/ruby
+require 'net/http'
 require 'yaml'
+
+_version = '0.0.1'
 
 if ARGV.first == '--install'
 	homeDir = File.expand_path('~')
@@ -44,6 +47,35 @@ function cd () {
 	system("touch #{homeDir}/.pathInstalled")
 	system("touch #{homeDir}/.pathCache")
 	exit
+end
+
+if ARGV.first == '--update'
+
+	puts "Downloading latest KCD..."
+
+	# Get the latest version
+	kcd = Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/kcd'))
+
+	# Write updated version to system
+	File.open("/usr/local/bin/kcd", "w") do |file|
+		file.write kcd
+	end
+
+	# Running after update tasks
+	system("kcd --after-update")
+
+	puts "Done..."
+	exit
+end
+
+if ARGV.first == '--after-update'
+	# Update CD Function etc...
+	exit
+end
+
+# Remind about an update
+if Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/version.txt')).strip !== _version
+	puts "There is an update for kcd. Run 'kcd --update'"
 end
 
 # Get new directory
