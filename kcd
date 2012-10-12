@@ -54,7 +54,7 @@ if ARGV.first == '--update'
 	puts "Downloading latest KCD..."
 
 	# Get the latest version
-	kcd = Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/kcd'))
+	kcd = Net::HTTPS.get(URI('https://raw.github.com/KellyLSB/KCD/master/kcd'))
 
 	# Write updated version to system
 	File.open("/usr/local/bin/kcd", "w") do |file|
@@ -74,7 +74,7 @@ if ARGV.first == '--after-update'
 end
 
 # Remind about an update
-if Net::HTTP.get(URI('https://raw.github.com/KellyLSB/KCD/master/version.txt')).strip != _version
+if Net::HTTPS.get(URI('https://raw.github.com/KellyLSB/KCD/master/version.txt')).strip != _version
 	puts "There is an update for kcd. Run 'kcd --update'"
 end
 
