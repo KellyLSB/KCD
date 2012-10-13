@@ -2,17 +2,11 @@
 require 'net/http'
 require 'yaml'
 
-_version = '0.0.1'
+# Version of the Software
+_version = '0.0.2'
 
-if ARGV.first == '--install'
-	homeDir = File.expand_path('~')
-
-	if File.exists?("#{homeDir}/.pathInstalled")
-		puts "KCD is already installed"
-		exit
-	end
-
-	bash_function = <<-FUNCTION
+# Bash function used with kcd
+bash_function = <<-FUNCTION
 ### KCD ###
 function cd () {
 	builtin cd "$@" && kcd;
@@ -23,109 +17,142 @@ function cd () {
 	fi
 }
 ### END KCD ###
-	FUNCTION
+FUNCTION
 
-	if File.exists?("#{homeDir}/.zshrc")
-		file = "#{homeDir}/.zshrc"
-	elsif File.exists?("#{homeDir}/.bash_profile")
-		file = "#{homeDir}/.bash_profile"
-	elsif File.exists?("#{homeDir}/.bashrc")
-		file = "#{homeDir}/.bashrc"
+# KCD home config directory
+kcd_dir = File.join(Dir.home, '.kcd')
+
+# Installer
+if ARGV.first == '--install'
+
+	# Make the home config directory
+	Dir.mkdir(kcd_dir)
+
+	if Dir.exists?(kcd_dir)
+		puts "KCD is already installed..."
+		exit
+	end
+
+	# Figure out which file to add the function to
+	if File.exists?(File.join(Home.dir, '.zshrc'))
+		file = File.join(Home.dir, '.zshrc')
+	elsif File.exists?(File.join(Home.dir, '.bash_profile'))
+		file = File.join(Home.dir, '.bash_profile')
+	elsif File.exists?(File.join(Home.dir, '.bashrc'))
+		file = File.join(Home.dir, '.bashrc')
 	else
 		file = nil
 	end
 
+	# Append the function to the shell
 	File.open(file, 'a') do |f|
   		f.puts "\n" + bash_function
 	end unless file.nil?
 
+	# Check to see if were running this file from /usr/local/bin
+	# If not go ahread and copy it there and delete the current
 	path = ENV['PATH'].split(':')
 	unless path.include? File.dirname(__FILE__)
-		system('cp ' + __FILE__ + ' /usr/local/bin/')
+		system('cp ' + __FILE__ + ' /usr/local/bin/ && rm ' + __FILE__';')
 	end
 
-	puts "Now it is installed"
-	system("touch #{homeDir}/.pathInstalled")
-	system("touch #{homeDir}/.pathCache")
+	# Notify of installation
+	puts "KCD is now installed..."
+
+	# Generate the cache hash
+	system("touch #{kcd_dir}/cache")
 	exit
 end
 
+# Updater
 if ARGV.first == '--update'
 
+	# Notify of download
 	puts "Downloading latest KCD..."
 
-	# Get the latest version
+	# Download latest shell script
 	kcd = `curl -s "https://raw.github.com/KellyLSB/KCD/master/kcd"`.strip
 
-	# Write updated version to system
-	File.open("/usr/local/bin/kcd", "w") do |file|
-		file.write kcd
-	end
+	# Write updated version to /usr/local/bin
+	File.open("/usr/local/bin/kcd", "w"){|f| f.write kcd}
 
-	# Running after update tasks
+	# Run after update tasks
 	system("kcd --after-update")
 
+	# Notify of completion
 	puts "Done..."
 	exit
 end
 
+# After update script ... Run migrations...
 if ARGV.first == '--after-update'
 	# Update CD Function etc...
 	exit
 end
 
 # Remind about an update
-if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
-	puts "There is an update for kcd. Run 'kcd --update'"
+if File.open(File.join(kcd_dir, '.check_update')).ctime < (Time.now - 86400)
+	if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
+		puts "There is an update for kcd. Run 'kcd --update'"
+	end
 end
 
-# Get new directory
-current_dir = `pwd`.strip.split('/')
+#==================================#
+#=========== Versioning ===========#
+#==================================#
 
-i = 1; while i < current_dir.length
-	pathDir = current_dir.join('/')
-	break if File.exists?("#{pathDir}/.path")
+# Get current directory
+current_dir = `pwd`.strip
+current_dir_split = current_dir.split('/')
+
+# Find a directory with a .path in it
+directory_segs = current_dir_split.length
+i = 1; while i < directory_segs
+	pathDir = current_dir_split.join('/')
+	break if File.exists?(File.join(pathDir, '.path'))
+	current_dir_split.pop
 	pathDir = nil
 	i += 1
 end
 
-# Home Dir
-homeDir = File.expand_path('~')
-
-# Load Path Cache
-cache = YAML::load(File.new("#{homeDir}/.pathCache", "r").read)
+# Load KCD cache
+cache = YAML::load(File.new(File.join(kcd_dir, 'cache'), "r").read)
 cache = Hash.new if cache == false || cache.nil? || cache.empty?
 
 # If we have a pathfile
 unless pathDir.nil?
-	backUp = pathDir.split('/')[0..-2].join('/')
+
+	# Backup the current path
+	backUp = File.dirname(pathDir)
 	cache[backUp] = ENV['PATH']
 
-	# Write path file to source
-	File.open("#{current_dir.join('/')}/.pathSource", "w+") do |file|
-		file.write 'export PATH="' + File.new("#{pathDir}/.path", "r").read.strip + ':' + ENV['PATH'] + '"'
+	# Create file for us to source new path with
+	File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
+		f.write 'export PATH="' + File.new(File.join(pathDir, '.path'), "r").read.strip + ':' + ENV['PATH'] + '"'
 	end
 else
 
-	contain = nil
-	cache.each do |key, val|
+	# Check if the current dir had a cached key
+	cache.keys.each do |key|
+		next unless key.include? current_dir
 		contain = key
-		break if key.include? current_dir.join('/')
-		contain = nil
 	end
 
+	# If there is a cached key restore
 	unless contain.nil?
 		path = cache[contain]
 
 		# Write path file to source
-		File.open("#{current_dir.join('/')}/.pathSource", "w+") do |file|
-			file.write 'export PATH="' + path + '"'
+		File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
+			f.write 'export PATH="' + path + '"'
 		end
 
+		# Delete the key
 		cache.delete(contain)
 	end
 end
 
-File.open("#{homeDir}/.pathCache", "w") do |file|
-	file.write YAML::dump(cache)
+# Write any changes to the cache
+File.open(File.join(kcd_dir, 'cache'), "w") do |f|
+	f.write YAML::dump(cache)
 end
