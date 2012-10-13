@@ -8,12 +8,28 @@ We start off by capturing the cd method by overriding cd in the users .zshrc, .b
 
 When we enter a directory above the one containing the `.path` file we then restore the original path.
 
-Installation
-============
+## Requirements
+* Ruby / POSIX Operating system (Im using on Mac OS X 10.8.2 with Ruby 1.9.3)
+
+## Installation
 Download `kcd` and `chmod +x ./kcd` and run `./kcd --install` it will append the bash function to one of the above listed files and move the `kcd` script to `/usr/local/bin`. The script will let you know once a day if an upgrade is available and will instruct you how to perform the upgrade.
 
-License
-=======
+## TODO
+* Use The terminal shell ID when caching.
+* Properly unsource the PATH if multiple paths have been sourced down the same tree.
+
+## TIPS
+
+### .path file tips
+You can use ticks to run commands in your .path files for example if the contents of your path file is the following
+
+```bash
+`pwd`/scripts
+```
+
+Then it will source the current working directory (When it is sourced. Something i need to fix.) and append scripts. This is useful if you want to commit you .path file into a git repository and all your developers have different development environments.
+
+## License
 Copyright (c) 2012 Kelly Becker
 
 Permission is hereby granted, free of charge, to any person obtaining
