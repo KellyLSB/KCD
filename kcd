@@ -25,21 +25,21 @@ kcd_dir = File.join(Dir.home, '.kcd')
 # Installer
 if ARGV.first == '--install'
 
-	# Make the home config directory
-	Dir.mkdir(kcd_dir)
-
 	if Dir.exists?(kcd_dir)
 		puts "KCD is already installed..."
 		exit
+	else
+		# Make the home config directory
+		Dir.mkdir(kcd_dir)
 	end
 
 	# Figure out which file to add the function to
-	if File.exists?(File.join(Home.dir, '.zshrc'))
-		file = File.join(Home.dir, '.zshrc')
-	elsif File.exists?(File.join(Home.dir, '.bash_profile'))
-		file = File.join(Home.dir, '.bash_profile')
-	elsif File.exists?(File.join(Home.dir, '.bashrc'))
-		file = File.join(Home.dir, '.bashrc')
+	if File.exists?(File.join(Dir.home, '.zshrc'))
+		file = File.join(Dir.home, '.zshrc')
+	elsif File.exists?(File.join(Dir.home, '.bash_profile'))
+		file = File.join(Dir.home, '.bash_profile')
+	elsif File.exists?(File.join(Dir.home, '.bashrc'))
+		file = File.join(Dir.home, '.bashrc')
 	else
 		file = nil
 	end
@@ -53,7 +53,7 @@ if ARGV.first == '--install'
 	# If not go ahread and copy it there and delete the current
 	path = ENV['PATH'].split(':')
 	unless path.include? File.dirname(__FILE__)
-		system('cp ' + __FILE__ + ' /usr/local/bin/ && rm ' + __FILE__';')
+		system('cp ' + __FILE__ + ' /usr/local/bin/ && rm ' + __FILE__ + ';')
 	end
 
 	# Notify of installation
@@ -61,6 +61,7 @@ if ARGV.first == '--install'
 
 	# Generate the cache hash
 	system("touch #{kcd_dir}/cache")
+	system("touch #{kcd_dir}/check_update")
 	exit
 end
 
@@ -91,10 +92,11 @@ if ARGV.first == '--after-update'
 end
 
 # Remind about an update
-if File.open(File.join(kcd_dir, '.check_update')).ctime < (Time.now - 86400)
+if File.open(File.join(kcd_dir, 'check_update')).ctime < (Time.now - 86400)
 	if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
 		puts "There is an update for kcd. Run 'kcd --update'"
 	end
+	system("touch #{kcd_dir}/check_update")
 end
 
 #==================================#
@@ -133,6 +135,7 @@ unless pathDir.nil?
 else
 
 	# Check if the current dir had a cached key
+	contain = nil
 	cache.keys.each do |key|
 		next unless key.include? current_dir
 		contain = key
