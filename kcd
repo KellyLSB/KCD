@@ -1,15 +1,21 @@
 #!/usr/local/bin/ruby
+
+# KCD Directory / Path Changer
+# Copyright (c) 2012 Kelly Becker
+# http://github.com/KellyLSB/KCD
+# http://kellybecker.me
+
 require 'net/http'
 require 'yaml'
 
 # Version of the Software
-_version = '0.0.2'
+_version = '0.0.3'
 
 # Bash function used with kcd
 bash_function = <<-FUNCTION
 ### KCD ###
 function cd () {
-	builtin cd "$@" && kcd;
+	builtin cd "$@" && kcd "$$";
 
 	if [ -f "`pwd`/.pathSource" ]
 		then
@@ -93,15 +99,27 @@ end
 
 # Remind about an update
 if File.open(File.join(kcd_dir, 'check_update')).ctime < (Time.now - 86400)
-	if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
-		puts "There is an update for kcd. Run 'kcd --update'"
+	begin
+		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
+			puts "There is an update for kcd. Run 'kcd --update'"
+		end
+	rescue => e
+		# If an exception is thrown ignore
 	end
+
+	# Touch the file so we know we have checked for an update recently
 	system("touch #{kcd_dir}/check_update")
 end
 
 #==================================#
 #=========== Versioning ===========#
 #==================================#
+
+# Process ID (Based as an argument)
+shell_pid = ARGV.first
+if shell_pid.to_s.match(/\A[+-]?\d+?(\.\d+)?\Z/).nil?
+	shell_pid = nil
+end
 
 # Get current directory
 current_dir = `pwd`.strip
@@ -121,12 +139,21 @@ end
 cache = YAML::load(File.new(File.join(kcd_dir, 'cache'), "r").read)
 cache = Hash.new if cache == false || cache.nil? || cache.empty?
 
+# Use a cache for this shell instance if possible
+unless shell_pid.nil?
+	cache[shell_pid] = Hash.new unless cache[shell_pid].is_a?(Hash)
+	shell_cache = cache[shell_pid]
+else
+	cache['default'] = Hash.new unless cache['default'].is_a?(Hash)
+	shell_cache = cache['default']
+end
+
 # If we have a pathfile
 unless pathDir.nil?
 
 	# Backup the current path
 	backUp = File.dirname(pathDir)
-	cache[backUp] = ENV['PATH']
+	shell_cache[backUp] = ENV['PATH']
 
 	# Create file for us to source new path with
 	File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
@@ -136,14 +163,14 @@ else
 
 	# Check if the current dir had a cached key
 	contain = nil
-	cache.keys.each do |key|
+	shell_cache.keys.each do |key|
 		next unless key.include? current_dir
 		contain = key
 	end
 
 	# If there is a cached key restore
 	unless contain.nil?
-		path = cache[contain]
+		path = shell_cache[contain]
 
 		# Write path file to source
 		File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
@@ -151,8 +178,30 @@ else
 		end
 
 		# Delete the key
-		cache.delete(contain)
+		shell_cache.delete(contain)
 	end
+end
+
+# Mixin the namespaces back into the cache
+unless shell_pid.nil?
+	cache[shell_pid] = shell_cache
+else
+	cache['default'] = shell_cache
+end
+
+# Delete any empty caches
+cache.delete_if do |key, val|
+
+	# Check if PID is alive
+	begin
+		Process.kill 0, key.to_i if key != 'default'
+		remove = false
+	rescue
+		remove = true
+	end
+
+	# Remove any caches that are empty or dead
+	val.empty? || remove
 end
 
 # Write any changes to the cache
