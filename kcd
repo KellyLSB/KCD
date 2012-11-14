@@ -157,7 +157,7 @@ unless pathDir.nil?
 
 	# Create file for us to source new path with
 	File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
-		f.write 'export PATH="' + File.new(File.join(pathDir, '.path'), "r").read.strip + ':' + ENV['PATH'] + '"'
+		f.write 'export PATH="' + File.open(File.join(pathDir, '.path'), 'r').read.strip + ':' + ENV['PATH'] + '"'
 	end
 else
 
