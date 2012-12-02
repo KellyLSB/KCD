@@ -14,9 +14,11 @@ When we enter a directory above the one containing the `.path` file we then rest
 ## Installation
 Download `kcd` and `chmod +x ./kcd` and run `./kcd --install` it will append the bash function to one of the above listed files and move the `kcd` script to `/usr/local/bin`. The script will let you know once a day if an upgrade is available and will instruct you how to perform the upgrade.
 
+## Uninstall ='(
+Sorry it didn't work out. All you have to do is run `kcd --uninstall` that's it.
+
 ## TODO
 * Properly unsource the PATH if multiple paths have been sourced down the same tree.
-* Add automatic cleanup of the bash profile extensions
 
 ## TIPS
 
