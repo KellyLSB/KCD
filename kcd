@@ -61,8 +61,11 @@ def uninstall_shell_extension
 	end
 end
 
+# Command
+COMMAND = ARGV.first
+
 # Installer
-if ARGV.first == '--install'
+if COMMAND == '--install'
 
 	if Dir.exists?(KCD_DIR)
 		puts "KCD is already installed..."
@@ -91,10 +94,9 @@ if ARGV.first == '--install'
 	system("touch #{KCD_DIR}/cache")
 	system("touch #{KCD_DIR}/check_update")
 	exit
-end
 
 # Updater
-if ARGV.first == '--update'
+elsif COMMAND == '--update'
 
 	# Notify of download
 	puts "Downloading latest KCD..."
@@ -107,24 +109,22 @@ if ARGV.first == '--update'
 	File.open("/usr/local/bin/kcd", "w"){|f| f.write kcd}
 
 	# Run after update tasks
-	puts `kcd --after-update`
+	puts `/usr/local/bin/kcd --after-update`
 
 	# Notify of completion
 	puts "Done..."
 	exit
-end
 
 # After update script ... Run migrations...
-if ARGV.first == '--after-update'
+elsif COMMAND == '--after-update'
 	puts "Removing old KCD Shell Extension"
 	uninstall_shell_extension
 	puts "Adding new KCD Shell Extension"
 	install_shell_extension
 	exit
-end
 
 # After update script ... Run migrations...
-if ARGV.first == '--uninstall'
+elsif COMMAND == '--uninstall'
 	puts "Removing KCD Shell Extension"
 	uninstall_shell_extension
 	puts "Removing Configuration Directory"
@@ -153,7 +153,7 @@ end
 #==================================#
 
 # Process ID (Based as an argument)
-shell_pid = ARGV.first
+shell_pid = COMMAND
 if shell_pid.to_s.match(/\A[+-]?\d+?(\.\d+)?\Z/).nil?
 	shell_pid = nil
 end
