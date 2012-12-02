@@ -43,7 +43,7 @@ def install_shell_extension
 
 		# Append the function to the shell
 		File.open(file, 'a') do |f|
-			f.puts "\n\n" + BASH_FUNCTION
+			f.puts "\n" + BASH_FUNCTION
 		end
 	end
 end
@@ -107,7 +107,7 @@ if ARGV.first == '--update'
 	File.open("/usr/local/bin/kcd", "w"){|f| f.write kcd}
 
 	# Run after update tasks
-	puts system("kcd --after-update")
+	puts `kcd --after-update`
 
 	# Notify of completion
 	puts "Done..."
