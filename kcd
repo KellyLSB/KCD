@@ -5,14 +5,18 @@
 # http://github.com/KellyLSB/KCD
 # http://kellybecker.me
 
+require 'fileutils'
 require 'net/http'
 require 'yaml'
 
 # Version of the Software
-_version = '0.0.3'
+VERSION = '0.0.4'
+
+# Bash Files
+BASH_FILES = ['.zshrc', '.bash_profile', '.bashrc'].collect{|f| File.join(Dir.home, f)}
 
 # Bash function used with kcd
-bash_function = <<-FUNCTION
+BASH_FUNCTION = <<-FUNCTION
 ### KCD ###
 function cd () {
 	builtin cd "$@" && kcd "$$";
@@ -25,38 +29,56 @@ function cd () {
 ### END KCD ###
 FUNCTION
 
+# Find KCD code
+KCD_REGEX = /### KCD ###(.*?)### END KCD ###/m
+
 # KCD home config directory
-kcd_dir = File.join(Dir.home, '.kcd')
+KCD_DIR = File.join(Dir.home, '.kcd')
+
+# Place shell extension
+def install_shell_extension
+	# Append to files
+	BASH_FILES.each do |file|
+		next if !File.exists?(file)
+
+		# Append the function to the shell
+		File.open(file, 'a') do |f|
+			f.puts "\n\n" + BASH_FUNCTION
+		end
+	end
+end
+
+# Remove shell extension
+def uninstall_shell_extension
+	# Append to files
+	BASH_FILES.each do |file|
+		next if !File.exists?(file)
+
+		data = File.read(file).gsub(KCD_REGEX, '')
+
+		# Rewrite
+		File.open(file, 'w'){|f| f.write data.strip + "\n"}
+	end
+end
 
 # Installer
 if ARGV.first == '--install'
 
-	if Dir.exists?(kcd_dir)
+	if Dir.exists?(KCD_DIR)
 		puts "KCD is already installed..."
 		exit
 	else
 		# Make the home config directory
-		Dir.mkdir(kcd_dir)
+		Dir.mkdir(KCD_DIR)
 	end
 
-	# Figure out which file to add the function to
-	if File.exists?(File.join(Dir.home, '.zshrc'))
-		file = File.join(Dir.home, '.zshrc')
-	elsif File.exists?(File.join(Dir.home, '.bash_profile'))
-		file = File.join(Dir.home, '.bash_profile')
-	elsif File.exists?(File.join(Dir.home, '.bashrc'))
-		file = File.join(Dir.home, '.bashrc')
-	else
-		file = nil
-	end
-
-	# Append the function to the shell
-	File.open(file, 'a') do |f|
-  		f.puts "\n" + bash_function
-	end unless file.nil?
+	# Install shell extension
+	puts "Installing KCD Shell Extension"
+	install_shell_extension
 
 	# Check to see if were running this file from /usr/local/bin
 	# If not go ahread and copy it there and delete the current
+	puts "Installing at /usr/local/bin/kcd"
 	path = ENV['PATH'].split(':')
 	unless path.include? File.dirname(__FILE__)
 		system('cp ' + __FILE__ + ' /usr/local/bin/ && rm ' + __FILE__ + ';')
@@ -66,8 +88,8 @@ if ARGV.first == '--install'
 	puts "KCD is now installed..."
 
 	# Generate the cache hash
-	system("touch #{kcd_dir}/cache")
-	system("touch #{kcd_dir}/check_update")
+	system("touch #{KCD_DIR}/cache")
+	system("touch #{KCD_DIR}/check_update")
 	exit
 end
 
@@ -81,10 +103,11 @@ if ARGV.first == '--update'
 	kcd = `curl -s "https://raw.github.com/KellyLSB/KCD/master/kcd"`.strip
 
 	# Write updated version to /usr/local/bin
+	puts "Updating /usr/local/bin/kcd"
 	File.open("/usr/local/bin/kcd", "w"){|f| f.write kcd}
 
 	# Run after update tasks
-	system("kcd --after-update")
+	puts system("kcd --after-update")
 
 	# Notify of completion
 	puts "Done..."
@@ -93,14 +116,28 @@ end
 
 # After update script ... Run migrations...
 if ARGV.first == '--after-update'
-	# Update CD Function etc...
+	puts "Removing old KCD Shell Extension"
+	uninstall_shell_extension
+	puts "Adding new KCD Shell Extension"
+	install_shell_extension
+	exit
+end
+
+# After update script ... Run migrations...
+if ARGV.first == '--uninstall'
+	puts "Removing KCD Shell Extension"
+	uninstall_shell_extension
+	puts "Removing Configuration Directory"
+	FileUtils.rm_rf(KCD_DIR)
+	puts "Removing /usr/local/bin/kcd"
+	File.delete('/usr/local/bin/kcd')
 	exit
 end
 
 # Remind about an update
-if File.open(File.join(kcd_dir, 'check_update')).ctime < (Time.now - 86400)
+if File.open(File.join(KCD_DIR, 'check_update')).ctime < (Time.now - 86400)
 	begin
-		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
+		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != VERSION
 			puts "There is an update for kcd. Run 'kcd --update'"
 		end
 	rescue => e
@@ -108,7 +145,7 @@ if File.open(File.join(kcd_dir, 'check_update')).ctime < (Time.now - 86400)
 	end
 
 	# Touch the file so we know we have checked for an update recently
-	system("touch #{kcd_dir}/check_update")
+	system("touch #{KCD_DIR}/check_update")
 end
 
 #==================================#
@@ -136,7 +173,7 @@ i = 1; while i < directory_segs
 end
 
 # Load KCD cache
-cache = YAML::load(File.new(File.join(kcd_dir, 'cache'), "r").read)
+cache = YAML::load(File.new(File.join(KCD_DIR, 'cache'), "r").read)
 cache = Hash.new if cache == false || cache.nil? || cache.empty?
 
 # Use a cache for this shell instance if possible
@@ -205,6 +242,6 @@ cache.delete_if do |key, val|
 end
 
 # Write any changes to the cache
-File.open(File.join(kcd_dir, 'cache'), "w") do |f|
+File.open(File.join(KCD_DIR, 'cache'), "w") do |f|
 	f.write YAML::dump(cache)
 end
