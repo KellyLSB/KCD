@@ -14,9 +14,11 @@ When we enter a directory above the one containing the `.path` file we then rest
 ## Installation
 Download `kcd` and `chmod +x ./kcd` and run `./kcd --install` it will append the bash function to one of the above listed files and move the `kcd` script to `/usr/local/bin`. The script will let you know once a day if an upgrade is available and will instruct you how to perform the upgrade.
 
+## Uninstall ='(
+Sorry it didn't work out. All you have to do is run `kcd --uninstall` that's it.
+
 ## TODO
 * Properly unsource the PATH if multiple paths have been sourced down the same tree.
-* Add automatic cleanup of the bash profile extensions
 
 ## TIPS
 
@@ -30,7 +32,7 @@ You can use ticks to run commands in your .path files for example if the content
 Then it will source the current working directory (When it is sourced. Something i need to fix.) and append scripts. This is useful if you want to commit you .path file into a git repository and all your developers have different development environments.
 
 ### Cleanup your .zshrc, .bashrc, or .bash_profile
-In the early stages of this script I have not built a shell profile cleaner yet to upgrade the shell extension. This measn that we are probabbly dirtying your shell profile. I apologize this is on the todo list.
+In the early stages of this script I had not built a shell profile cleaner to upgrade the shell extension. This measn that I probabbly dirtied up your shell profile. I apologize we know do cleanup with Regex. ^_^
 
 ## License
 Copyright (c) 2012 Kelly Becker
