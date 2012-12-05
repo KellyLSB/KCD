@@ -10,7 +10,7 @@ require 'net/http'
 require 'yaml'
 
 # Version of the Software
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 
 # Bash Files
 BASH_FILES = ['.zshrc', '.bash_profile', '.bashrc'].collect{|f| File.join(Dir.home, f)}
@@ -26,6 +26,7 @@ function cd () {
 			source "`pwd`/.pathSource" && rm "`pwd`/.pathSource";
 	fi
 }
+cd .
 ### END KCD ###
 FUNCTION
 
