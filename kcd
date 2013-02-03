@@ -1,4 +1,4 @@
-#!/usr/local/bin/ruby
+#!/usr/bin/env ruby
 
 # KCD Directory / Path Changer
 # Copyright (c) 2012 Kelly Becker
