@@ -10,7 +10,7 @@ require 'net/http'
 require 'yaml'
 
 # Version of the Software
-VERSION = '0.0.5'
+VERSION = '0.01.0'
 
 # Bash Files
 BASH_FILES = ['.zshrc', '.bash_profile', '.bashrc'].collect{|f| File.join(Dir.home, f)}
