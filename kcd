@@ -10,7 +10,7 @@ require 'net/http'
 require 'yaml'
 
 # Version of the Software
-VERSION = '0.01.0'
+_version = '0.1.1'
 
 # Bash Files
 BASH_FILES = ['.zshrc', '.bash_profile', '.bashrc'].collect{|f| File.join(Dir.home, f)}
@@ -138,7 +138,7 @@ end
 # Remind about an update
 if File.open(File.join(KCD_DIR, 'check_update')).ctime < (Time.now - 86400)
 	begin
-		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != VERSION
+		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
 			puts "There is an update for kcd. Run 'kcd --update'"
 		end
 	rescue => e
