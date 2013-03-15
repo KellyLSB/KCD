@@ -11,21 +11,21 @@ require 'yaml'
 
 module KellyLSB
 module KCD
-	VERSION = '1.0.0'
+  VERSION = '1.0.0'
 end
 end
 
 BASH_FILES = [
-	'.zshrc',
-	'.bash_profile',
-	'.bashrc'
+  '.zshrc',
+  '.bash_profile',
+  '.bashrc'
 ].collect{|f| File.join(Dir.home, f)}
 
 BASH_FUNCTION = <<-FUNCTION
 ### KCD ###
 function cd () {
-	builtin cd "$@" && kcd "$$";
-	[[ -f ./source ]] && source ./source
+  builtin cd "$@" && kcd "$$";
+  [[ -f ./source ]] && source ./source
 }
 cd .
 ### END KCD ###
@@ -46,71 +46,71 @@ COMMAND = ARGV.shift
 
 class KellyLSB::KCD::Main
 
-	def self.install_shell_extension
-		BASH_FILES.each do |file|
-			next if !File.exists?(file)
-			File.open(file, 'a') do |f|
-				f.puts "\n" + BASH_FUNCTION
-			end
-		end
-	end
+  def self.install_shell_extension
+    BASH_FILES.each do |file|
+      next if !File.exists?(file)
+      File.open(file, 'a') do |f|
+        f.puts "\n" + BASH_FUNCTION
+      end
+    end
+  end
 
-	def self.uninstall_shell_extension
-		BASH_FILES.each do |file|
-			next if !File.exists?(file)
-			data = File.read(file).gsub(KCD_REGEX, '')
-			File.open(file, 'w'){|f| f.write data.strip + "\n"}
-		end
-	end
+  def self.uninstall_shell_extension
+    BASH_FILES.each do |file|
+      next if !File.exists?(file)
+      data = File.read(file).gsub(KCD_REGEX, '')
+      File.open(file, 'w'){|f| f.write data.strip + "\n"}
+    end
+  end
 end
 
 case COMMAND
 when 'install'
 
-	if File.exists?(KCD_INSTALL_PATH)
-		puts 'KCD is already installed...'
-		exit
-	end
+  if File.exists?(KCD_INSTALL_PATH)
+    puts 'KCD is already installed...'
+    exit
+  end
 
-	puts 'Installing KCD Shell Extension...'
-	KellyLSB::KCD::Main.install_shell_extension
+  puts 'Installing KCD Shell Extension...'
+  KellyLSB::KCD::Main.install_shell_extension
 
-	puts "Installing at #{KCD_INSTALL_PATH}..."
-	unless PATH.include?(File.dirname(__FILE__))
-		%x{cp #{__FILE__} #{KCD_INSTALL_PATH} && rm #{__FILE__};}
-	end
+  puts "Installing at #{KCD_INSTALL_PATH}..."
+  unless PATH.include?(File.dirname(__FILE__))
+    %x{cp #{__FILE__} #{KCD_INSTALL_PATH} && rm #{__FILE__};}
+  end
 
-	puts 'KCD is now installed.'
-	%x{touch #{KCDRC}}
-	exit
+  puts 'KCD is now installed.'
+  %x{touch #{KCDRC}}
+  exit
 when 'update'
 
-	puts 'Downloading latest KCD...'
-	kcd = %x{curl #{KCD_UPDATE_URL} -O #{KCD_INSTALL_PATH}}.strip
-	IO.popen(%{#{__FILE__} @post-update}) { |io| puts io }
-	puts 'Done.'
-	exit
+  puts 'Downloading latest KCD...'
+  kcd = %x{curl #{KCD_UPDATE_URL} -O #{KCD_INSTALL_PATH}}.strip
+  IO.popen(%{#{__FILE__} @post-update}) { |io| puts io }
+  puts 'Done.'
+  exit
 when '@post-update'
 
-	puts 'Removing old KCD Cache Folder...'
-	%{rm -Rf ~/.kcd}
-	puts 'Removing old KCD Shell Extension...'
-	KellyLSB::KCD::Main.uninstall_shell_extension
-	puts 'Adding new KCD Shell Extension...'
-	KellyLSB::KCD::Main.install_shell_extension
-	puts 'Done.'
-	exit
+  puts 'Removing old KCD Cache Folder...'
+  %{rm -Rf ~/.kcd}
+  puts 'Removing old KCD Shell Extension...'
+  KellyLSB::KCD::Main.uninstall_shell_extension
+  puts 'Adding new KCD Shell Extension...'
+  KellyLSB::KCD::Main.install_shell_extension
+  puts 'Done.'
+  exit
 when 'uninstall'
 
-	puts 'Removing KCD Shell Extension'
-	KellyLSB::KCD::Main.uninstall_shell_extension
+  puts 'Removing KCD Shell Extension'
+  KellyLSB::KCD::Main.uninstall_shell_extension
 
-	puts 'Removing Configuration Directory'
-	%x{rm #{KCDRC}}
+  puts 'Removing Configuration Directory'
+  %x{rm #{KCDRC}}
 
-	puts 'Removing /usr/local/bin/kcd'
-	%x{rm #{KCD_INSTALL_PATH}}
-	exit
+  puts 'Removing /usr/local/bin/kcd'
+  %x{rm #{KCD_INSTALL_PATH}}
+  exit
 end
 
 ### Actual KCD Processing #####################################
@@ -125,8 +125,8 @@ source = File.open(source, 'w+') if File.writable?(source)
 spid  = :main if COMMAND.match(/\A[+-]?\d+?(\.\d+)?\Z/).nil?
 
 if kcdrcr.ctime < Time.now - 1800
-	v = %x{curl -s https://raw.github.com/KellyLSB/KCD/master/version.txt}.chomp
-	puts 'There is an update for kcd. Run `kcd update`' if v != KellyLSB::KCD::VERSION
+  v = %x{curl -s https://raw.github.com/KellyLSB/KCD/master/version.txt}.chomp
+  puts 'There is an update for kcd. Run `kcd update`' if v != KellyLSB::KCD::VERSION
 end
 
 cache         = YAML.load(kcdrcr.read)
@@ -134,31 +134,31 @@ cache       ||= {}
 cache[spid] ||= {}
 
 cwds.length.times do
-	path = "#{cwds.join('/')}/.path"
-	if File.exist?(path)
-		break	
-	else
-		path = nil
-		cwds.pop
-	end
+  path = "#{cwds.join('/')}/.path"
+  if File.exist?(path)
+    break 
+  else
+    path = nil
+    cwds.pop
+  end
 end
 
 path = nil if cwds.length < 1
 
 if path.nil? && cache[spid].keys.map{|k| k.include?(cwd) ? key : nil}.compact.count > 0
-	source.write(%{export PATH="#{cache[spid][twd]}"}) rescue nil
-	cache[spid].delete(twd)
+  source.write(%{export PATH="#{cache[spid][twd]}"}) rescue nil
+  cache[spid].delete(twd)
 elsif path
 
-	twd = File.dirname(cwd)
-	cache[spid][twd] = ENV['PATH']
+  twd = File.dirname(cwd)
+  cache[spid][twd] = ENV['PATH']
 
-	path = File.read(path)
-	source.write(%{export PATH="#{path}:#{PATH}"}) rescue nil
+  path = File.read(path)
+  source.write(%{export PATH="#{path}:#{PATH}"}) rescue nil
 end
 
 cache.delete_if do |spid, twd|
-	twd.empty? || !Process.kill(0, spid) || spid != :default
+  twd.empty? || !Process.kill(0, spid) || spid != :default
 end
 
 kcdrcr.close
