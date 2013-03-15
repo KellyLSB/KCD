@@ -1,6 +1,9 @@
 Release Notes
 =============
 
+## v1.0.0 Mar 14th, 2013
+* Complete overhaul to get ready for more features.
+
 ## v0.0.3 Oct 13th, 2012
 * Made caching relational to the PID of the shell.
 

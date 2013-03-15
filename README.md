@@ -12,10 +12,12 @@ When we enter a directory above the one containing the `.path` file we then rest
 * Ruby / POSIX Operating system (Im using on Mac OS X 10.8.2 with Ruby 1.9.3)
 
 ## Installation
-Download `kcd` and `chmod +x ./kcd` and run `./kcd --install` it will append the bash function to one of the above listed files and move the `kcd` script to `/usr/local/bin`. The script will let you know once a day if an upgrade is available and will instruct you how to perform the upgrade.
+`curl https://raw.github.com/KellyLSB/KCD/master/install.sh | sh`
+
+KCD will append itself to one of the above listed profile files and move the `kcd` script to `/usr/local/bin` (feel free to fork or download and modify). The script will let you know once a day if an upgrade is available and will instruct you how to perform the upgrade.
 
 ## Uninstall ='(
-Sorry it didn't work out. All you have to do is run `kcd --uninstall` that's it.
+Sorry it didn't work out. All you have to do is run `kcd uninstall` that's it.
 
 ## TODO
 * Properly unsource the PATH if multiple paths have been sourced down the same tree.
@@ -32,7 +34,7 @@ You can use ticks to run commands in your .path files for example if the content
 Then it will source the current working directory (When it is sourced. Something i need to fix.) and append scripts. This is useful if you want to commit you .path file into a git repository and all your developers have different development environments.
 
 ### Cleanup your .zshrc, .bashrc, or .bash_profile
-In the early stages of this script I had not built a shell profile cleaner to upgrade the shell extension. This measn that I probabbly dirtied up your shell profile. I apologize we know do cleanup with Regex. ^_^
+In the early stages of this script I had not built a shell profile cleaner to upgrade the shell extension. This measn that I probabbly dirtied up your shell profile. I apologize we now do cleanup with Regex. ^_^
 
 ## License
 Copyright (c) 2012 Kelly Becker

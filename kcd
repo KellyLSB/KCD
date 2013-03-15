@@ -1,248 +1,167 @@
 #!/usr/bin/env ruby
 
 # KCD Directory / Path Changer
-# Copyright (c) 2012 Kelly Becker
+# Copyright (c) 2013 Kelly Becker
 # http://github.com/KellyLSB/KCD
 # http://kellybecker.me
 
-require 'fileutils'
-require 'net/http'
 require 'yaml'
 
-# Version of the Software
-_version = '0.1.1'
+### Global Variables ################################################
 
-# Bash Files
-BASH_FILES = ['.zshrc', '.bash_profile', '.bashrc'].collect{|f| File.join(Dir.home, f)}
+module KellyLSB
+module KCD
+	VERSION = '1.0.0'
+end
+end
 
-# Bash function used with kcd
+BASH_FILES = [
+	'.zshrc',
+	'.bash_profile',
+	'.bashrc'
+].collect{|f| File.join(Dir.home, f)}
+
 BASH_FUNCTION = <<-FUNCTION
 ### KCD ###
 function cd () {
 	builtin cd "$@" && kcd "$$";
-
-	if [ -f "`pwd`/.pathSource" ]
-		then
-			source "`pwd`/.pathSource" && rm "`pwd`/.pathSource";
-	fi
+	[[ -f ./source ]] && source ./source
 }
 cd .
 ### END KCD ###
 FUNCTION
 
-# Find KCD code
+KCD_INSTALL_PATH = '/usr/local/bin/kcd'
+KCD_UPDATE_URL = 'https://raw.github.com/KellyLSB/KCD/master/kcd'
 KCD_REGEX = /### KCD ###(.*?)### END KCD ###/m
+KCDRC = Dir.home + '/.kcd_cache'
 
-# KCD home config directory
-KCD_DIR = File.join(Dir.home, '.kcd')
+PATH = ENV['PATH']
 
-# Place shell extension
-def install_shell_extension
-	# Append to files
-	BASH_FILES.each do |file|
-		next if !File.exists?(file)
+### Command To Run ##################################################
 
-		# Append the function to the shell
-		File.open(file, 'a') do |f|
-			f.puts "\n" + BASH_FUNCTION
+COMMAND = ARGV.shift
+
+### Global Variables ################################################
+
+class KellyLSB::KCD::Main
+
+	def self.install_shell_extension
+		BASH_FILES.each do |file|
+			next if !File.exists?(file)
+			File.open(file, 'a') do |f|
+				f.puts "\n" + BASH_FUNCTION
+			end
+		end
+	end
+
+	def self.uninstall_shell_extension
+		BASH_FILES.each do |file|
+			next if !File.exists?(file)
+			data = File.read(file).gsub(KCD_REGEX, '')
+			File.open(file, 'w'){|f| f.write data.strip + "\n"}
 		end
 	end
 end
 
-# Remove shell extension
-def uninstall_shell_extension
-	# Append to files
-	BASH_FILES.each do |file|
-		next if !File.exists?(file)
+case COMMAND
+when 'install'
 
-		data = File.read(file).gsub(KCD_REGEX, '')
-
-		# Rewrite
-		File.open(file, 'w'){|f| f.write data.strip + "\n"}
-	end
-end
-
-# Command
-COMMAND = ARGV.first
-
-# Installer
-if COMMAND == '--install'
-
-	if Dir.exists?(KCD_DIR)
-		puts "KCD is already installed..."
+	if File.exists?(KCD_INSTALL_PATH)
+		puts 'KCD is already installed...'
 		exit
+	end
+
+	puts 'Installing KCD Shell Extension...'
+	KellyLSB::KCD::Main.install_shell_extension
+
+	puts "Installing at #{KCD_INSTALL_PATH}..."
+	unless PATH.include?(File.dirname(__FILE__))
+		%x{cp #{__FILE__} #{KCD_INSTALL_PATH} && rm #{__FILE__};}
+	end
+
+	puts 'KCD is now installed.'
+	%x{touch #{KCDRC}}
+	exit
+when 'update'
+
+	puts 'Downloading latest KCD...'
+	kcd = %x{curl #{KCD_UPDATE_URL} -O #{KCD_INSTALL_PATH}}.strip
+	IO.popen(%{#{__FILE__} @post-update}) { |io| puts io }
+	puts 'Done.'
+	exit
+when '@post-update'
+
+	puts 'Removing old KCD Cache Folder...'
+	%{rm -Rf ~/.kcd}
+	puts 'Removing old KCD Shell Extension...'
+	KellyLSB::KCD::Main.uninstall_shell_extension
+	puts 'Adding new KCD Shell Extension...'
+	KellyLSB::KCD::Main.install_shell_extension
+	puts 'Done.'
+	exit
+when 'uninstall'
+
+	puts 'Removing KCD Shell Extension'
+	KellyLSB::KCD::Main.uninstall_shell_extension
+
+	puts 'Removing Configuration Directory'
+	%x{rm #{KCDRC}}
+
+	puts 'Removing /usr/local/bin/kcd'
+	%x{rm #{KCD_INSTALL_PATH}}
+	exit
+end
+
+### Actual KCD Processing #####################################
+
+kcdrcr = File.open(KCDRC, 'r')
+kcdrc  = File.open(KCDRC, 'w')
+cwd    = File.dirname(%x{pwd})
+cwds   = cwd.split('/')
+source = "#{cwd}/.source"
+source = File.open(source, 'w+') if File.writable?(source)
+
+spid  = :main if COMMAND.match(/\A[+-]?\d+?(\.\d+)?\Z/).nil?
+
+if kcdrcr.ctime < Time.now - 1800
+	v = %x{curl -s https://raw.github.com/KellyLSB/KCD/master/version.txt}.chomp
+	puts 'There is an update for kcd. Run `kcd update`' if v != KellyLSB::KCD::VERSION
+end
+
+cache         = YAML.load(kcdrcr.read)
+cache       ||= {}
+cache[spid] ||= {}
+
+cwds.length.times do
+	path = "#{cwds.join('/')}/.path"
+	if File.exist?(path)
+		break	
 	else
-		# Make the home config directory
-		Dir.mkdir(KCD_DIR)
-	end
-
-	# Install shell extension
-	puts "Installing KCD Shell Extension"
-	install_shell_extension
-
-	# Check to see if were running this file from /usr/local/bin
-	# If not go ahread and copy it there and delete the current
-	puts "Installing at /usr/local/bin/kcd"
-	path = ENV['PATH'].split(':')
-	unless path.include? File.dirname(__FILE__)
-		system('cp ' + __FILE__ + ' /usr/local/bin/ && rm ' + __FILE__ + ';')
-	end
-
-	# Notify of installation
-	puts "KCD is now installed..."
-
-	# Generate the cache hash
-	system("touch #{KCD_DIR}/cache")
-	system("touch #{KCD_DIR}/check_update")
-	exit
-
-# Updater
-elsif COMMAND == '--update'
-
-	# Notify of download
-	puts "Downloading latest KCD..."
-
-	# Download latest shell script
-	kcd = `curl -s "https://raw.github.com/KellyLSB/KCD/master/kcd"`.strip
-
-	# Write updated version to /usr/local/bin
-	puts "Updating /usr/local/bin/kcd"
-	File.open("/usr/local/bin/kcd", "w"){|f| f.write kcd}
-
-	# Run after update tasks
-	puts `/usr/local/bin/kcd --after-update`
-
-	# Notify of completion
-	puts "Done..."
-	exit
-
-# After update script ... Run migrations...
-elsif COMMAND == '--after-update'
-	puts "Removing old KCD Shell Extension"
-	uninstall_shell_extension
-	puts "Adding new KCD Shell Extension"
-	install_shell_extension
-	exit
-
-# After update script ... Run migrations...
-elsif COMMAND == '--uninstall'
-	puts "Removing KCD Shell Extension"
-	uninstall_shell_extension
-	puts "Removing Configuration Directory"
-	FileUtils.rm_rf(KCD_DIR)
-	puts "Removing /usr/local/bin/kcd"
-	File.delete('/usr/local/bin/kcd')
-	exit
-end
-
-# Remind about an update
-if File.open(File.join(KCD_DIR, 'check_update')).ctime < (Time.now - 86400)
-	begin
-		if `curl -s "https://raw.github.com/KellyLSB/KCD/master/version.txt"`.strip != _version
-			puts "There is an update for kcd. Run 'kcd --update'"
-		end
-	rescue => e
-		# If an exception is thrown ignore
-	end
-
-	# Touch the file so we know we have checked for an update recently
-	system("touch #{KCD_DIR}/check_update")
-end
-
-#==================================#
-#=========== Versioning ===========#
-#==================================#
-
-# Process ID (Based as an argument)
-shell_pid = COMMAND
-if shell_pid.to_s.match(/\A[+-]?\d+?(\.\d+)?\Z/).nil?
-	shell_pid = nil
-end
-
-# Get current directory
-current_dir = `pwd`.strip
-current_dir_split = current_dir.split('/')
-
-# Find a directory with a .path in it
-directory_segs = current_dir_split.length
-i = 1; while i < directory_segs
-	pathDir = current_dir_split.join('/')
-	break if File.exists?(File.join(pathDir, '.path'))
-	current_dir_split.pop
-	pathDir = nil
-	i += 1
-end
-
-# Load KCD cache
-cache = YAML::load(File.new(File.join(KCD_DIR, 'cache'), "r").read)
-cache = Hash.new if cache == false || cache.nil? || cache.empty?
-
-# Use a cache for this shell instance if possible
-unless shell_pid.nil?
-	cache[shell_pid] = Hash.new unless cache[shell_pid].is_a?(Hash)
-	shell_cache = cache[shell_pid]
-else
-	cache['default'] = Hash.new unless cache['default'].is_a?(Hash)
-	shell_cache = cache['default']
-end
-
-# If we have a pathfile
-unless pathDir.nil?
-
-	# Backup the current path
-	backUp = File.dirname(pathDir)
-	shell_cache[backUp] = ENV['PATH']
-
-	# Create file for us to source new path with
-	File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
-		f.write 'export PATH="' + File.open(File.join(pathDir, '.path'), 'r').read.strip + ':' + ENV['PATH'] + '"'
-	end
-else
-
-	# Check if the current dir had a cached key
-	contain = nil
-	shell_cache.keys.each do |key|
-		next unless key.include? current_dir
-		contain = key
-	end
-
-	# If there is a cached key restore
-	unless contain.nil?
-		path = shell_cache[contain]
-
-		# Write path file to source
-		File.open(File.join(current_dir, '.pathSource'), "w+") do |f|
-			f.write 'export PATH="' + path + '"'
-		end
-
-		# Delete the key
-		shell_cache.delete(contain)
+		path = nil
+		cwds.pop
 	end
 end
 
-# Mixin the namespaces back into the cache
-unless shell_pid.nil?
-	cache[shell_pid] = shell_cache
-else
-	cache['default'] = shell_cache
+path = nil if cwds.length < 1
+
+if path.nil? && cache[spid].keys.map{|k| k.include?(cwd) ? key : nil}.compact.count > 0
+	source.write(%{export PATH="#{cache[spid][twd]}"}) rescue nil
+	cache[spid].delete(twd)
+elsif path
+
+	twd = File.dirname(cwd)
+	cache[spid][twd] = ENV['PATH']
+
+	path = File.read(path)
+	source.write(%{export PATH="#{path}:#{PATH}"}) rescue nil
 end
 
-# Delete any empty caches
-cache.delete_if do |key, val|
-
-	# Check if PID is alive
-	begin
-		Process.kill 0, key.to_i if key != 'default'
-		remove = false
-	rescue
-		remove = true
-	end
-
-	# Remove any caches that are empty or dead
-	val.empty? || remove
+cache.delete_if do |spid, twd|
+	twd.empty? || !Process.kill(0, spid) || spid != :default
 end
 
-# Write any changes to the cache
-File.open(File.join(KCD_DIR, 'cache'), "w") do |f|
-	f.write YAML::dump(cache)
-end
+kcdrcr.close
+kcdrc.write(YAML.dump(cache))
+kcdrc.close
+exit
