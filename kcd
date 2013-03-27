@@ -11,7 +11,7 @@ require 'yaml'
 
 module KellyLSB
 module KCD
-  VERSION = '1.0.0'
+  VERSION = '1.0.1'
 end
 end
 
@@ -19,7 +19,7 @@ BASH_FILES = [
   '.zshrc',
   '.bash_profile',
   '.bashrc'
-].collect{|f| File.join(Dir.home, f)}
+].collect{|f| File.join(ENV['HOME'], f)}
 
 BASH_FUNCTION = <<-FUNCTION
 ### KCD ###
@@ -34,7 +34,7 @@ FUNCTION
 KCD_INSTALL_PATH = '/usr/local/bin/kcd'
 KCD_UPDATE_URL = 'https://raw.github.com/KellyLSB/KCD/master/kcd'
 KCD_REGEX = /### KCD ###(.*?)### END KCD ###/m
-KCDRC = Dir.home + '/.kcd_cache'
+KCDRC = ENV['HOME'] + '/.kcd_cache'
 
 PATH = ENV['PATH']
 
