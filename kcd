@@ -11,7 +11,7 @@ require 'yaml'
 
 module KellyLSB
 module KCD
-  VERSION = '1.0.1'
+  VERSION = '1.0.2'
 end
 end
 
@@ -26,6 +26,7 @@ BASH_FUNCTION = <<-FUNCTION
 function cd () {
   builtin cd "$@" && kcd "$$";
   [[ -f ./source ]] && source ./source
+  [ true ] # Ensures no error code return (from sourcing)
 }
 cd .
 ### END KCD ###
